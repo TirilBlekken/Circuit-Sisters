@@ -1,8 +1,12 @@
+
+with MicroBit.MotorDriver; use MicroBit.MotorDriver;
+with MicroBit.Buttons; use MicroBit.Buttons;
 with MicroBit.Console; use MicroBit.Console;
 use MicroBit;
 -- USN PROJECT TEMPLATE INTELLIGENT REAL-TIME SYSTEMS
 -- Project name: [Circuit Sisters]
 -- Project members: [Tiril Blekken, Yeojin Song, Marielle Langmoen]
+
 
 
 --This is a project template for the MicroBit v2, built against the embedded-nrf52833
@@ -21,8 +25,17 @@ use MicroBit;
 procedure Main with Priority => 0 is
 
 begin
-   Put_Line (" <-- The zero means: Let's get started...");
+   Put_Line ("A for starting, B for stopping");
    loop
-      null;
+      if State (Button_A) = Pressed then
+         Put_Line ("Driving forward");
+         MotorDriver.Drive(Forward, (2000, 2000, 2000, 2000));
+      elsif State (Button_B) = Pressed then
+         Put_Line ("Stop");
+         MotorDriver.Drive(Stop);
+      end if;
+      delay 0.5;
    end loop;
 end Main;
+
+    

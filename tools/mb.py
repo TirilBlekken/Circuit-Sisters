@@ -187,8 +187,14 @@ def capture(cmd: list[str]) -> tuple[int, str]:
     """Run and capture. Status is the command's own, never a pipeline's."""
     if cmd and cmd[0] == "alr":
         cmd = [alr_path()] + cmd[1:]
+    # A Python child (pyocd) writing to a pipe on Windows encodes with the ANSI
+    # codepage; `pyocd list` then dies on the board's non-ASCII target name
+    # ('charmap' codec can't encode) and exits 1, so a connected micro:bit
+    # looked absent. Force UTF-8 on both ends of the pipe.
+    env = dict(os.environ, PYTHONIOENCODING="utf-8")
     try:
-        p = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True)
+        p = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", env=env)
     except FileNotFoundError:
         return 127, ""
     return p.returncode, (p.stdout + p.stderr)
