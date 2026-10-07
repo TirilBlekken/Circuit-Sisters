@@ -5,16 +5,14 @@ package Car is
 
    type Modes is (Stopped, Forward, Avoiding);
 
-   Stop_Distance : constant Distance_cm := 20; 
+   type Sides is (Front, Left, Right); -- where each distance sensor points
+   type Distances is array (Sides) of Distance_cm;
 
-   task Sensor  with Priority => 3;
-   task Motor   with Priority => 2;
-   task Display with Priority => 1;
+   Stop_Distance : constant Distance_cm := 10; -- turn when closer than this
 
-   
    protected State is
-      procedure Set_Distance (D : Distance_cm);
-      function Get_Distance return Distance_cm;
+      procedure Set_Distances (D : Distances);
+      function Get_Distances return Distances;
 
       procedure Set_Driving (On : Boolean);
       function Is_Driving return Boolean;
@@ -22,7 +20,7 @@ package Car is
       procedure Set_Mode (M : Modes);
       function Get_Mode return Modes;
    private
-      Distance : Distance_cm := 0;
+      Measured : Distances := (others => 0);
       Driving  : Boolean := False;
       Mode     : Modes := Stopped;
    end State;
