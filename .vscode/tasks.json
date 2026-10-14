@@ -5,6 +5,11 @@
     // and inside the devcontainer.
     //
     // mb.py drives everything through Alire, so no PATH setup is needed.
+    //
+    // Windows runs "py", not "python": the py launcher comes with both the
+    // python.org installer and the Python install manager, while "python" can
+    // be captured by the Microsoft Store alias, which only prints "Python ble
+    // ikke funnet" (Python was not found) and exits.
     "version": "2.0.0",
     "tasks": [
         {
@@ -12,7 +17,7 @@
             "detail": "Build the template and flash it to the micro:bit",
             "type": "process",
             "command": "python3",
-            "windows": { "command": "python" },
+            "windows": { "command": "py" },
             "args": ["tools/mb.py", "flash"],
             "options": { "cwd": "${workspaceFolder}" },
             "problemMatcher": ["$ada-error", "$ada-warning"],
@@ -23,7 +28,7 @@
             "detail": "Build the template (Code/itrs.gpr)",
             "type": "process",
             "command": "python3",
-            "windows": { "command": "python" },
+            "windows": { "command": "py" },
             "args": ["tools/mb.py", "build"],
             "options": { "cwd": "${workspaceFolder}" },
             "problemMatcher": ["$ada-error", "$ada-warning"],
@@ -34,7 +39,7 @@
             "detail": "Pick any example and build + flash it, without reopening the folder",
             "type": "process",
             "command": "python3",
-            "windows": { "command": "python" },
+            "windows": { "command": "py" },
             "args": ["tools/mb.py", "build", "--use", "${input:project}"],
             "options": { "cwd": "${workspaceFolder}" },
             "problemMatcher": ["$ada-error", "$ada-warning"],
@@ -47,7 +52,7 @@
             "detail": "Build the example containing the currently open file",
             "type": "process",
             "command": "python3",
-            "windows": { "command": "python" },
+            "windows": { "command": "py" },
             "args": ["tools/mb.py", "build", "--use-dir", "${fileDirname}"],
             "options": { "cwd": "${workspaceFolder}" },
             "problemMatcher": ["$ada-error", "$ada-warning"],
@@ -58,7 +63,7 @@
             "detail": "Run gnatprove in flow mode",
             "type": "process",
             "command": "python3",
-            "windows": { "command": "python" },
+            "windows": { "command": "py" },
             "args": ["tools/mb.py", "prove"],
             "options": { "cwd": "${workspaceFolder}" },
             "problemMatcher": ["$ada-error", "$ada-warning"],
@@ -72,7 +77,7 @@
             "detail": "Serve the flasher on port 8080 with the firmware you just built",
             "type": "process",
             "command": "python3",
-            "windows": { "command": "python" },
+            "windows": { "command": "py" },
             "args": ["tools/mb.py", "serve"],
             "options": { "cwd": "${workspaceFolder}" },
             "problemMatcher": ["$ada-error", "$ada-warning"],
@@ -84,7 +89,7 @@
             "detail": "Mass-erase the micro:bit (try this if flashing times out)",
             "type": "process",
             "command": "python3",
-            "windows": { "command": "python" },
+            "windows": { "command": "py" },
             "args": ["tools/mb.py", "erase"],
             "options": { "cwd": "${workspaceFolder}" },
             "problemMatcher": []
@@ -94,7 +99,7 @@
             "detail": "Check that the toolchain and probe are usable",
             "type": "process",
             "command": "python3",
-            "windows": { "command": "python" },
+            "windows": { "command": "py" },
             "args": ["tools/mb.py", "doctor"],
             "options": { "cwd": "${workspaceFolder}" },
             "problemMatcher": []
@@ -104,7 +109,7 @@
             "detail": "Build every project; known failures are reported as XFAIL",
             "type": "process",
             "command": "python3",
-            "windows": { "command": "python" },
+            "windows": { "command": "py" },
             "args": ["tools/mb.py", "build", "--all"],
             "options": { "cwd": "${workspaceFolder}" },
             "problemMatcher": ["$ada-error", "$ada-warning"]
@@ -118,6 +123,7 @@
             "default": "template",
             "options": [
                 "template",
+                "itrs_v2",
                 "ravenscar/BLE_beacon",
                 "ravenscar/accelerometer",
                 "ravenscar/analog_in",

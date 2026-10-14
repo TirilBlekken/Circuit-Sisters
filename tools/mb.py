@@ -70,6 +70,7 @@ SIZE = "arm-eabi-size"
 SKIP_PARTS = {"obj", "build", "boards", ".git", "lib"}
 
 HAS_MAIN = re.compile(r"^\s*for\s+Main\s+use", re.IGNORECASE | re.MULTILINE)
+OBJECT_DIR = re.compile(r'^\s*for\s+Object_Dir\s+use\s+"([^"]+)"', re.IGNORECASE | re.MULTILINE)
 
 
 def rel(p: Path) -> str:
@@ -106,6 +107,11 @@ def discover() -> dict[str, Path]:
     found: dict[str, Path] = {}
     if TEMPLATE_GPR.is_file():
         found["template"] = TEMPLATE_GPR
+    # A group may keep a second version of their program next to the template
+    # (Code/itrs_v2.gpr over src_v2/). Offer each such project by its name.
+    for gpr in sorted(TEMPLATE_GPR.parent.glob("*.gpr")):
+        if gpr != TEMPLATE_GPR and is_buildable(gpr):
+            found.setdefault(gpr.stem, gpr)
 
     if EXAMPLES.is_dir():
         for gpr in sorted(EXAMPLES.rglob("*.gpr")):
@@ -124,7 +130,11 @@ def discover() -> dict[str, Path]:
 def resolve_dir(start: Path) -> tuple[str, Path]:
     """Nearest enclosing project for a file or directory (for ${fileDirname})."""
     projects = discover()
-    by_dir = {gpr.parent.resolve(): (pid, gpr) for pid, gpr in projects.items()}
+    by_dir: dict[Path, tuple[str, Path]] = {}
+    for pid, gpr in projects.items():
+        # Code/ holds the template and any second version of it; a file in
+        # there resolves to the template, as it always did.
+        by_dir.setdefault(gpr.parent.resolve(), (pid, gpr))
     here = start.resolve()
     if here.is_file():
         here = here.parent
@@ -209,7 +219,8 @@ RELOCATE = ["--root-dir=.", f"--relocate-build-tree=build/obj"]
 
 def built_exe(gpr: Path) -> Path:
     """Where gprbuild puts the executable inside the relocated tree."""
-    return OBJ_TREE / rel(gpr.parent) / "obj" / "main"
+    m = OBJECT_DIR.search(gpr.read_text(errors="replace"))
+    return OBJ_TREE / rel(gpr.parent) / (m.group(1) if m else "obj") / "main"
 
 
 def build_one(pid: str, gpr: Path, quiet: bool = False) -> bool:

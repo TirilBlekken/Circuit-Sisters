@@ -1,3 +1,5 @@
+with Ada.Execution_Time;
+use type Ada.Execution_Time.CPU_Time;
 with Ada.Real_Time;        use Ada.Real_Time;
 with MicroBit.MotorDriver; use MicroBit.MotorDriver;
 with MicroBit.Console;     use MicroBit.Console;
@@ -20,8 +22,15 @@ package body Car.Motor is
       Brake_Ticks : Natural := 0;
       Turn        : Directions := Rotating_Right;
       Last_Mode   : Modes := Avoiding;
+      -- Measuring C (execution time) for the response time analysis.
+      Start_C : Ada.Execution_Time.CPU_Time;
+      Used_C  : Time_Span;
+      Max_C   : Time_Span := Time_Span_Zero; -- the largest C seen so far
+      Rounds  : Natural := 0; -- print Max_C every 10 rounds = 1000 ms
    begin
       loop
+         Start_C := Ada.Execution_Time.Clock;
+
          D := State.Get_Distances;
 
          if not State.Is_Driving then
@@ -66,6 +75,20 @@ package body Car.Motor is
          if State.Get_Mode /= Last_Mode then
             Last_Mode := State.Get_Mode;
             Put_Line ("Mode: " & Last_Mode'Image);
+         end if;
+
+         -- C for this round: CPU time used since Start_C. Keep the largest;
+         -- that is the WCET to use in the analysis. Printed regularly, not
+         -- only on a new record: the records are set in the first second,
+         -- usually before the serial monitor is connected.
+         Used_C := Ada.Execution_Time.Clock - Start_C;
+         if Used_C > Max_C then
+            Max_C := Used_C;
+         end if;
+         Rounds := Rounds + 1;
+         if Rounds >= 10 then
+            Rounds := 0;
+            Put_Line ("Motor max C:" & Integer'Image (Max_C / Microseconds (1)) & " us");
          end if;
 
          Next := Next + Period;

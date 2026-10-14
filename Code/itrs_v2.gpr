@@ -24,7 +24,7 @@ project Itrs_V2 is
    end Builder;
 
    package Linker is
-      for Switches ("ada") use ("-g", "-Wl,--print-memory-usage", "-Wl,-T,../eh_frame.ld");
+      for Switches ("ada") use ("-g", "-Wl,--print-memory-usage", "-Wl,-T," & Project'Project_Dir & "eh_frame.ld");
    end Linker;
 
 end Itrs_V2;
