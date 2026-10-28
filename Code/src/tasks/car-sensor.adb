@@ -6,25 +6,42 @@ use MicroBit;
 
 package body Car.Sensor is
 
-   -- Three HC-SR04 sensors, wired as in the ultrasonic example: one Trigger
-   -- pin each, and one shared Echo pin. Only one sensor is triggered at a
-   -- time, so they can share it.
-   Front_Trigger : GPIO_Point renames MB_P16;
-   Left_Trigger  : GPIO_Point renames MB_P15;
-   Right_Trigger : GPIO_Point renames MB_P14;
-   Echo          : GPIO_Point renames MB_P0;
+   ---------------------------------------------------------------------
+   -- WIRING: two HC-SR04 distance sensors, both pointing forward
+   --
+   --   Seen from the FRONT of the car (sensors pointing at you), the car's
+   --   left is on your right:
+   --
+   --          car's RIGHT              car's LEFT
+   --        (( ))   (( ))            (( ))   (( ))
+   --         Trig P16                 Trig P14
+   --         Echo P13                 Echo P15
+   --
+   --   Sensor       | Trig -> micro:bit pin | Echo -> micro:bit pin
+   --   -------------+-----------------------+----------------------
+   --   Left  front  | P14                   | P15
+   --   Right front  | P16                   | P13
+   --
+   -- Trig: micro:bit -> sensor. A 10 us pulse means "measure now".
+   -- Echo: sensor -> micro:bit. High for 58 us per cm to the obstacle.
+   ---------------------------------------------------------------------
+   Left_Trig_Pin  : GPIO_Point renames MB_P14;
+   Left_Echo_Pin  : GPIO_Point renames MB_P15;
+   Right_Trig_Pin : GPIO_Point renames MB_P16;
+   Right_Echo_Pin : GPIO_Point renames MB_P13;
 
    -- Not MicroBit.Ultrasonic: its wait loops never leave when the deadline
    -- passes, so a missing echo froze every task. This gives up instead.
    -- Worst case 3 + 24 = 27 ms. Returns 0 when there is no echo.
-   function Read_Distance (Trigger : in out GPIO_Point) return Distance_cm is
+   function Read_Distance (Trig : in out GPIO_Point;
+                           Echo : GPIO_Point) return Distance_cm is
       Start_Deadline : constant Time := Clock + Milliseconds (3);
       Echo_Start     : Time;
       Cm             : Integer;
    begin
-      Trigger.Set;
+      Trig.Set;
       Delay_Us (10);
-      Trigger.Clear;
+      Trig.Clear;
 
       -- The sensor raises Echo shortly after the trigger pulse...
       loop
@@ -48,15 +65,16 @@ package body Car.Sensor is
    end Read_Distance;
 
    task body Sensor_Task is
-      -- Three reads take at most 3 x 27 = 81 ms, so the period must be longer.
+      -- Two reads take at most 2 x 27 = 54 ms, so the period must be longer.
       Period : constant Time_Span := Milliseconds (100);
       Next   : Time := Clock;
       D      : Distances;
    begin
       loop
-         D (Front) := Read_Distance (Front_Trigger);
-         D (Left)  := Read_Distance (Left_Trigger);
-         D (Right) := Read_Distance (Right_Trigger);
+         -- One after the other, never together: both point the same way, so
+         -- each would hear the other's ping.
+         D (Left)  := Read_Distance (Left_Trig_Pin, Left_Echo_Pin);
+         D (Right) := Read_Distance (Right_Trig_Pin, Right_Echo_Pin);
          State.Set_Distances (D);
 
          -- Written out in full: inside Car, "State" is the protected object.
@@ -77,17 +95,17 @@ package body Car.Sensor is
       Input_Buffer => Input_Buffer_Connect,
       Sense        => Sense_Disabled,
       others       => <>);
+   Input : constant GPIO_Configuration :=
+     (Mode         => Mode_In,
+      Resistors    => No_Pull,
+      Input_Buffer => Input_Buffer_Connect,
+      Sense        => Sense_Disabled,
+      others       => <>);
 begin
-   Front_Trigger.Configure_IO (Output);
-   Left_Trigger.Configure_IO (Output);
-   Right_Trigger.Configure_IO (Output);
-   Front_Trigger.Clear;
-   Left_Trigger.Clear;
-   Right_Trigger.Clear;
-
-   Echo.Configure_IO ((Mode         => Mode_In,
-                       Resistors    => No_Pull,
-                       Input_Buffer => Input_Buffer_Connect,
-                       Sense        => Sense_Disabled,
-                       others       => <>));
+   Left_Trig_Pin.Configure_IO (Output);
+   Right_Trig_Pin.Configure_IO (Output);
+   Left_Trig_Pin.Clear;
+   Right_Trig_Pin.Clear;
+   Left_Echo_Pin.Configure_IO (Input);
+   Right_Echo_Pin.Configure_IO (Input);
 end Car.Sensor;

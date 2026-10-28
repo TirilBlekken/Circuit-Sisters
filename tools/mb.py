@@ -70,6 +70,7 @@ SIZE = "arm-eabi-size"
 SKIP_PARTS = {"obj", "build", "boards", ".git", "lib"}
 
 HAS_MAIN = re.compile(r"^\s*for\s+Main\s+use", re.IGNORECASE | re.MULTILINE)
+SOURCE_DIRS = re.compile(r"^\s*for\s+Source_Dirs\s+use\s*\(([^)]*)\)", re.IGNORECASE | re.MULTILINE)
 OBJECT_DIR = re.compile(r'^\s*for\s+Object_Dir\s+use\s+"([^"]+)"', re.IGNORECASE | re.MULTILINE)
 
 
@@ -132,8 +133,15 @@ def resolve_dir(start: Path) -> tuple[str, Path]:
     projects = discover()
     by_dir: dict[Path, tuple[str, Path]] = {}
     for pid, gpr in projects.items():
-        # Code/ holds the template and any second version of it; a file in
-        # there resolves to the template, as it always did.
+        # Code/ holds the template and any second version of it, so the
+        # project's own folder cannot tell them apart: a file in src_v2/ went
+        # to the template and built the wrong program. Their Source_Dirs can.
+        if gpr.parent == TEMPLATE_GPR.parent:
+            m = SOURCE_DIRS.search(gpr.read_text(errors="replace"))
+            for d in re.findall(r'"([^"]+)"', m.group(1)) if m else []:
+                by_dir.setdefault((gpr.parent / d).resolve(), (pid, gpr))
+    for pid, gpr in projects.items():
+        # A file directly in Code/ still resolves to the template.
         by_dir.setdefault(gpr.parent.resolve(), (pid, gpr))
     here = start.resolve()
     if here.is_file():

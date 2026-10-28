@@ -38,18 +38,22 @@ package body Car.Display is
             Shown := Mode;
          end if;
 
-         -- C for this round: CPU time used since Start_C. Keep the largest;
-         -- that is the WCET to use in the analysis. Printed regularly, not
-         -- only on a new record: the records are set in the first second,
-         -- usually before the serial monitor is connected.
-         Used_C := Ada.Execution_Time.Clock - Start_C;
-         if Used_C > Max_C then
-            Max_C := Used_C;
-         end if;
+         -- Printed regularly, not only on a new record: the records are set
+         -- in the first second, usually before the serial monitor is
+         -- connected. Printed before C is measured, so the time Put_Line
+         -- takes is part of this round's C: the printing rounds are the
+         -- most expensive ones, and the WCET must include them.
          Rounds := Rounds + 1;
          if Rounds >= 5 then
             Rounds := 0;
-            Put_Line ("Display max C:" & Integer'Image (Max_C / Microseconds (1)) & " us");
+            Log.Put_Line ("Display max C:" & Integer'Image (Max_C / Microseconds (1)) & " us");
+         end if;
+
+         -- C for this round: CPU time used since Start_C. Keep the largest;
+         -- that is the WCET to use in the analysis.
+         Used_C := Ada.Execution_Time.Clock - Start_C;
+         if Used_C > Max_C then
+            Max_C := Used_C;
          end if;
 
          Next := Next + Period;

@@ -16,8 +16,8 @@ package body Car.Display is
          if Mode /= Shown then
             MicroBit.DisplayRT.Clear;
             case Mode is
-               when Stopped | Forward => MicroBit.DisplayRT.Symbols.Smile;
-               when Avoiding          => MicroBit.DisplayRT.Symbols.Frown;
+               when Stopped | Forward | Slowing => MicroBit.DisplayRT.Symbols.Smile;
+               when Avoiding                    => MicroBit.DisplayRT.Symbols.Frown;
             end case;
             Shown := Mode;
          end if;

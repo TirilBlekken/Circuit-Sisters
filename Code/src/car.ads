@@ -3,12 +3,15 @@ with MicroBit.Types; use MicroBit.Types;
 
 package Car is
 
-   type Modes is (Stopped, Forward, Avoiding);
+   type Modes is (Stopped, Forward, Slowing, Avoiding);
 
-   type Sides is (Front, Left, Right); -- where each distance sensor points
+   -- Two distance sensors, both pointing forward: one on the car's left
+   -- side of the front, one on its right.
+   type Sides is (Left, Right);
    type Distances is array (Sides) of Distance_cm;
 
-   Stop_Distance : constant Distance_cm := 10; -- turn when closer than this
+   Slow_Distance : constant Distance_cm := 15; -- half speed from here, slowing down
+   Stop_Distance : constant Distance_cm := 10; -- stop and turn when closer than this
 
    protected State is
       procedure Set_Distances (D : Distances);

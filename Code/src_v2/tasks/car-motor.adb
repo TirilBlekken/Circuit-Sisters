@@ -12,8 +12,8 @@ package body Car.Motor is
    Turn_Speed  : constant Speeds :=
      (rf => 4095, rb => 4095, lf => 4095, lb => 4095);
 
-   function Room (D : Distance_cm) return Distance_cm
-   is (if D < 2 then Distance_cm'Last else D);
+   --function Room (D : Distance_cm) return Distance_cm
+   --is (if D < 2 then Distance_cm'Last else D);
 
    task body Motor_Task is
       Period      : constant Time_Span := Milliseconds (100);
@@ -36,18 +36,18 @@ package body Car.Motor is
          if not State.Is_Driving then
             State.Set_Mode (Stopped);
             MotorDriver.Drive (Stop);
-
-         elsif Room (D (Left)) < Stop_Distance
-           or else Room (D (Right)) < Stop_Distance
+-- fjerner Room 
+         elsif (D (Left)) < Stop_Distance
+           or else (D (Right)) < Stop_Distance
          then
             if State.Get_Mode /= Avoiding then
 
-               if Room (D (Left)) > Room (D (Right)) then
+               if (D (Left)) > (D (Right)) then
                   Turn := Rotating_Left;
                else
                   Turn := Rotating_Right;
                end if;
-               Put_Line
+               Log.Put_Line
                  ("Obstacle at"
                   & D (Left)'Image
                   & " cm, right"
@@ -74,22 +74,27 @@ package body Car.Motor is
 
          if State.Get_Mode /= Last_Mode then
             Last_Mode := State.Get_Mode;
-            Put_Line ("Mode: " & Last_Mode'Image);
+            Log.Put_Line ("Mode: " & Last_Mode'Image);
+         end if;
+
+         -- Printed regularly, not only on a new record: the records are set
+         -- in the first second, usually before the serial monitor is
+         -- connected. Printed before C is measured, so the time Put_Line
+         -- takes is part of this round's C: the printing rounds are the
+         -- most expensive ones, and the WCET must include them.
+         Rounds := Rounds + 1;
+         if Rounds >= 10 then
+            Rounds := 0;
+            Log.Put_Line ("Motor max C:" & Integer'Image (Max_C / Microseconds (1)) & " us");
          end if;
 
          -- C for this round: CPU time used since Start_C. Keep the largest;
-         -- that is the WCET to use in the analysis. Printed regularly, not
-         -- only on a new record: the records are set in the first second,
-         -- usually before the serial monitor is connected.
+         -- that is the WCET to use in the analysis.
          Used_C := Ada.Execution_Time.Clock - Start_C;
          if Used_C > Max_C then
             Max_C := Used_C;
          end if;
-         Rounds := Rounds + 1;
-         if Rounds >= 10 then
-            Rounds := 0;
-            Put_Line ("Motor max C:" & Integer'Image (Max_C / Microseconds (1)) & " us");
-         end if;
+         
 
          Next := Next + Period;
          delay until Next;

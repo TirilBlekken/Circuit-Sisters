@@ -9,10 +9,10 @@ use MicroBit;
 
 package body Car.Sensor is
 
-   Left_Trigger  : GPIO_Point renames MB_P13;
-   Left_Echo     : GPIO_Point renames MB_P14;
-   Right_Trigger : GPIO_Point renames MB_P15;
-   Right_Echo    : GPIO_Point renames MB_P16;
+   Left_Trigger  : GPIO_Point renames MB_P15;
+   Left_Echo     : GPIO_Point renames MB_P16;
+   Right_Trigger : GPIO_Point renames MB_P13;
+   Right_Echo    : GPIO_Point renames MB_P14;
 
    function Read_Distance
      (Trigger : in out GPIO_Point; Echo : GPIO_point) return Distance_cm
@@ -26,6 +26,7 @@ package body Car.Sensor is
       Trigger.Clear;
 
       loop
+      -- returnerer null hs det ikke er ekko
          exit when Echo.Set;
          if Clock >= Start_Deadline then
             return 0;
@@ -34,12 +35,15 @@ package body Car.Sensor is
       Echo_Start := Clock;
 
       loop
+      -- returnerer null hvis ekko varer over 24 ms, så hvis ingenting
+      -- innen feks 10, fri vei
          exit when not Echo.Set;
          if Clock >= Echo_Start + Milliseconds (24) then
-            return 0;
+         -- HERRRRR FORANDRRRINNGFFGF
+            return Distance_cm'Last;
          end if;
       end loop;
-
+-- ekko er kortere enn 58us, hindringen er nærmere enn 1 cm og vi får 0
       Cm := (Clock - Echo_Start) / Microseconds (58);
       return Distance_cm (Integer'Min (Cm, Integer (Distance_cm'Last)));
    end Read_Distance;
@@ -67,7 +71,7 @@ package body Car.Sensor is
          Ticks := Ticks + 1;
          if Ticks >= 10 then
             Ticks := 0;
-            Put_Line
+            Log.Put_Line
               ("Left:"
                & D (Left)'Image
                & "cm, right"
@@ -81,20 +85,23 @@ package body Car.Sensor is
             State.Set_Driving (False);
          end if;
 
+         -- Printed regularly, not only on a new record: the records are set
+         -- in the first second, usually before the serial monitor is
+         -- connected. Printed before C is measured, so the time Put_Line
+         -- takes is part of this round's C: the printing rounds are the
+         -- most expensive ones, and the WCET must include them.
+         Rounds := Rounds + 1;
+         if Rounds >= 10 then
+            Rounds := 0;
+            Log.Put_Line ("Sensor max C:" & Integer'Image (Max_C / Microseconds (1)) & " us");
+         end if;
+
          -- C for this round: CPU time used since Start_C. Keep the largest;
-         -- that is the WCET to use in the analysis. Printed regularly, not
-         -- only on a new record: the records are set in the first second,
-         -- usually before the serial monitor is connected.
+         -- that is the WCET to use in the analysis.
          Used_C := Ada.Execution_Time.Clock - Start_C;
          if Used_C > Max_C then
             Max_C := Used_C;
          end if;
-         Rounds := Rounds + 1;
-         if Rounds >= 10 then
-            Rounds := 0;
-            Put_Line ("Sensor max C:" & Integer'Image (Max_C / Microseconds (1)) & " us");
-         end if;
-
          Next := Next + Period;
          delay until Next;
       end loop;

@@ -1,4 +1,12 @@
+with MicroBit.Console;
 package body Car is
+
+protected body Log is
+      procedure Put_Line (S : String) is
+      begin
+         MicroBit.Console.Put_Line (S);
+      end Put_Line;
+   end Log;
 
    protected body State is
       -- All three in one call, so a reader never gets a new front distance
