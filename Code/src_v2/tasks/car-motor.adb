@@ -12,10 +12,34 @@ package body Car.Motor is
    Turn_Speed  : constant Speeds :=
      (rf => 4095, rb => 4095, lf => 4095, lb => 4095);
 
+   -- What Think has decided and Act should do. Direction and speed in one
+   -- call, so Act never gets a new direction together with an old speed.
+   protected Command is
+      procedure Set (Direction : Directions; Speed : Speeds);
+      procedure Get (Direction : out Directions; Speed : out Speeds);
+   private
+      Current_Direction : Directions := Stop;
+      Current_Speed     : Speeds := Drive_Speed;
+   end Command;
+
+   protected body Command is
+      procedure Set (Direction : Directions; Speed : Speeds) is
+      begin
+         Current_Direction := Direction;
+         Current_Speed := Speed;
+      end Set;
+
+      procedure Get (Direction : out Directions; Speed : out Speeds) is
+      begin
+         Direction := Current_Direction;
+         Speed := Current_Speed;
+      end Get;
+   end Command;
+
    --function Room (D : Distance_cm) return Distance_cm
    --is (if D < 2 then Distance_cm'Last else D);
 
-   task body Motor_Task is
+   task body Motor_Think_Task is
       Period      : constant Time_Span := Milliseconds (100);
       Next        : Time := Clock;
       D           : Distances;
@@ -35,8 +59,8 @@ package body Car.Motor is
 
          if not State.Is_Driving then
             State.Set_Mode (Stopped);
-            MotorDriver.Drive (Stop);
--- fjerner Room 
+            Command.Set (Stop, Drive_Speed);
+-- fjerner Room
          elsif (D (Left)) < Stop_Distance
            or else (D (Right)) < Stop_Distance
          then
@@ -62,14 +86,14 @@ package body Car.Motor is
 
             if Brake_Ticks > 0 then
                Brake_Ticks := Brake_Ticks - 1;
-               MotorDriver.Drive (Stop);
+               Command.Set (Stop, Drive_Speed);
             else
-               MotorDriver.Drive (Turn, Turn_Speed);
+               Command.Set (Turn, Turn_Speed);
             end if;
 
          else
             State.Set_Mode (Forward);
-            MotorDriver.Drive (Forward, Drive_Speed);
+            Command.Set (Forward, Drive_Speed);
          end if;
 
          if State.Get_Mode /= Last_Mode then
@@ -85,7 +109,7 @@ package body Car.Motor is
          Rounds := Rounds + 1;
          if Rounds >= 10 then
             Rounds := 0;
-            Log.Put_Line ("Motor max C:" & Integer'Image (Max_C / Microseconds (1)) & " us");
+            Log.Put_Line ("Motor think max C:" & Integer'Image (Max_C / Microseconds (1)) & " us");
          end if;
 
          -- C for this round: CPU time used since Start_C. Keep the largest;
@@ -94,11 +118,44 @@ package body Car.Motor is
          if Used_C > Max_C then
             Max_C := Used_C;
          end if;
-         
 
          Next := Next + Period;
          delay until Next;
       end loop;
-   end Motor_Task;
+   end Motor_Think_Task;
+
+   task body Motor_Act_Task is
+      Period    : constant Time_Span := Milliseconds (100);
+      Next      : Time := Clock;
+      Direction : Directions;
+      Speed     : Speeds;
+      -- Measuring C (execution time) for the response time analysis.
+      Start_C : Ada.Execution_Time.CPU_Time;
+      Used_C  : Time_Span;
+      Max_C   : Time_Span := Time_Span_Zero; -- the largest C seen so far
+      Rounds  : Natural := 0; -- print Max_C every 10 rounds = 1000 ms
+   begin
+      loop
+         Start_C := Ada.Execution_Time.Clock;
+
+         Command.Get (Direction, Speed);
+         MotorDriver.Drive (Direction, Speed);
+
+         -- Printed before C is measured, for the same reason as in Think.
+         Rounds := Rounds + 1;
+         if Rounds >= 10 then
+            Rounds := 0;
+            Log.Put_Line ("Motor act max C:" & Integer'Image (Max_C / Microseconds (1)) & " us");
+         end if;
+
+         Used_C := Ada.Execution_Time.Clock - Start_C;
+         if Used_C > Max_C then
+            Max_C := Used_C;
+         end if;
+
+         Next := Next + Period;
+         delay until Next;
+      end loop;
+   end Motor_Act_Task;
 
 end Car.Motor;
