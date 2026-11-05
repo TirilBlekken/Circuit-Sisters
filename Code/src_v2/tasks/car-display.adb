@@ -20,11 +20,14 @@ package body Car.Display is
    begin
       loop
          Start_C := Ada.Execution_Time.Clock;
-
+         -- gets the current mode
          Mode := State.Get_Mode;
 
+         --shown remebers the last mode shown
          if Mode /= Shown then
             MicroBit.DisplayRT.Clear;
+
+         -- case for the different modes
             case Mode is
                when Stopped | Forward =>
                   MicroBit.DisplayRT.Symbols.Smile;

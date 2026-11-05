@@ -26,7 +26,7 @@ package body Car.Sensor is
       Trigger.Clear;
 
       loop
-      -- returnerer null hs det ikke er ekko
+      
          exit when Echo.Set;
          if Clock >= Start_Deadline then
             return 0;
@@ -35,15 +35,13 @@ package body Car.Sensor is
       Echo_Start := Clock;
 
       loop
-      -- returnerer null hvis ekko varer over 24 ms, så hvis ingenting
-      -- innen feks 10, fri vei
+      -- returns zero if the echo is not received within 24 ms, which means that the obstacle is further away than 400 cm, and the car should not stop for it.
          exit when not Echo.Set;
          if Clock >= Echo_Start + Milliseconds (24) then
-         -- HERRRRR FORANDRRRINNGFFGF
             return Distance_cm'Last;
          end if;
       end loop;
--- ekko er kortere enn 58us, hindringen er nærmere enn 1 cm og vi får 0
+-- echo is shorter than 58us, which means that the obstacle is closer than 1 cm
       Cm := (Clock - Echo_Start) / Microseconds (58);
       return Distance_cm (Integer'Min (Cm, Integer (Distance_cm'Last)));
    end Read_Distance;
